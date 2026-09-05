@@ -1,0 +1,81 @@
+{
+  "version": "1.0",
+  "tasks": [
+    {
+      "id": "todo-001",
+      "title": "Setup project structure and dependencies",
+      "description": "Create todo.json, install Zustand, axios, zod for validation",
+      "status": "pending",
+      "priority": "high"
+    },
+    {
+      "id": "todo-002",
+      "title": "Refactor Attendance Service",
+      "description": "Remove TTL, add retry/backoff, add audit log, markAttendance improvements",
+      "status": "pending",
+      "priority": "high"
+    },
+    {
+      "id": "todo-003",
+      "title": "Implement RBAC middleware",
+      "description": "Create middleware.ts for role-based access control on all API routes",
+      "status": "pending",
+      "priority": "high"
+    },
+    {
+      "id": "todo-004",
+      "title": "Refactor Auth Context to Zustand",
+      "description": "Migrate AuthContext from Context API to Zustand store",
+      "status": "pending",
+      "priority": "medium"
+    },
+    {
+      "id": "todo-005",
+      "title": "Add API layer with axios and interceptors",
+      "description": "Create api.ts with retry logic and error handling",
+      "status": "pending",
+      "priority": "medium"
+    },
+    {
+      "id": "todo-006",
+      "title": "Refactor UI components: Card, Modal, Button, Toast",
+      "description": "Create reusable UI components with Tailwind classes",
+      "status": "pending",
+      "priority": "medium"
+    },
+    {
+      "id": "todo-007",
+      "title": "Improve QR scanner: react-qrcode-scanner integration",
+      "status": "pending",
+      "priority": "medium"
+    },
+    {
+      "id": "todo-008",
+      "title": "Add unit tests for services",
+      "description": "Tests for attendance, users, rbac services using Jest + React Testing Library",
+      "status": "pending",
+      "priority": "high"
+    },
+    {
+      "id": "todo-009",
+      "title": "Add integration tests for API and auth flow",
+      "description": "Tests using Playwright for end-to-end testing",
+      "status": "pending",
+      "priority": "high"
+    },
+    {
+      "id": "todo-010",
+      "title": "Set up CI/CD pipeline",
+      "description": "GitHub Actions workflow for lint/test/build/deploy",
+      "status": "pending",
+      "priority": "medium"
+    },
+    {
+      "id": "todo-011",
+      "title": "Write documentation",
+      "description": "README.md, API docs, architecture diagrams",
+      "status": "pending",
+      "priority": "low"
+    }
+  ]
+}

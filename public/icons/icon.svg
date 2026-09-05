@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#0B1220"/>
+  <circle cx="256" cy="256" r="210" fill="none" stroke="#D4A017" stroke-width="18"/>
+  <circle cx="256" cy="256" r="168" fill="none" stroke="#F59E0B" stroke-width="6"/>
+  <path d="M150 300V190l106-48 106 48v110c0 58-48 92-106 116-58-24-106-58-106-116Z" fill="#111827" stroke="#F59E0B" stroke-width="10"/>
+  <path d="M186 232h140M186 268h92" stroke="#38BDF8" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="318" cy="268" r="12" fill="#F59E0B"/>
+  <text x="256" y="360" text-anchor="middle" font-family="Arial,sans-serif" font-size="54" font-weight="800" fill="#F8FAFC">CSIS</text>
+</svg>

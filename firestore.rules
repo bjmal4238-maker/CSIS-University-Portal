@@ -1,0 +1,66 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      return isSignedIn() && userDoc().role == role;
+    }
+
+    function isAdmin() {
+      return hasRole('admin');
+    }
+
+    function isStaff() {
+      return isSignedIn() && userDoc().role in ['admin', 'doctor', 'ta'];
+    }
+
+    function isActive() {
+      return isSignedIn() && userDoc().status == 'active';
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isStaff());
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    match /subjects/{id} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /news/{id} {
+      allow read: if isSignedIn();
+      allow create: if isStaff() && isActive();
+      allow update: if isStaff() || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']));
+      allow delete: if isAdmin();
+
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && isActive();
+        allow delete: if isAdmin() || (isSignedIn() && resource.data.authorId == request.auth.uid);
+      }
+    }
+
+    match /attendance_sessions/{id} {
+      allow read: if isSignedIn();
+      allow create, update: if isStaff() && isActive();
+    }
+
+    match /attendance_records/{id} {
+      allow read: if isStaff() || (isSignedIn() && resource.data.studentUid == request.auth.uid);
+      allow create: if isSignedIn() && hasRole('student') && isActive();
+    }
+
+    match /otp_codes/{email} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}

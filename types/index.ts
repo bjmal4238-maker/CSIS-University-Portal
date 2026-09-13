@@ -16,10 +16,14 @@ export interface UserProfile {
   requestedRole?: UserRole;
   studentId?: string;
   major?: string;
+  department?: string;
   year?: StudyLevel;
   phone?: string;
   avatarUrl?: string;
   status: UserStatus;
+  pendingChanges?: Partial<
+    Pick<UserProfile, "displayName" | "major" | "year" | "avatarUrl">
+  > | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -50,15 +54,7 @@ export interface NewsAttachment {
   type: "image" | "file";
 }
 
-export interface NewsComment {
-  id: string;
-  newsId: string;
-  authorId: string;
-  authorName: string;
-  authorRole: UserRole;
-  body: string;
-  createdAt: string;
-}
+export type NewsStatus = "pending" | "approved" | "rejected";
 
 export interface NewsItem {
   id: string;
@@ -74,7 +70,18 @@ export interface NewsItem {
   fileUrl?: string;
   fileName?: string;
   attachments?: NewsAttachment[];
-  likes?: string[];
+  status: NewsStatus;
+  likes: string[];
+  createdAt: string;
+}
+
+export interface NewsComment {
+  id: string;
+  newsId: string;
+  authorId: string;
+  authorName: string;
+  authorRole: UserRole;
+  body: string;
   createdAt: string;
 }
 
@@ -99,10 +106,10 @@ export interface AttendanceRecord {
   studentUid: string;
   studentId: string;
   studentName: string;
-  year?: StudyLevel;
-  major?: string;
   markedAt: string;
   tokenUsed: string;
+  year?: string;
+  major?: string;
 }
 
 export type Permission =

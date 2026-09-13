@@ -1,169 +1,153 @@
 "use client";
 
-import {
-  GoogleAuthProvider,
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  signOut,
-  type User,
-} from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
-import { auth, db } from "@/lib/firebase/client";
-import { buildPendingProfile } from "@/lib/data/registry";
-import { hasPermission } from "@/lib/rbac/permissions";
-import { resolveUserProfile } from "@/lib/services/users";
-import type { Permission, UserProfile, UserRole } from "@/types";
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import type { CurrentUser } from "@/lib/auth";
+import type { UserProfile, UserRole, UserStatus, StudyLevel, Permission } from "@/types";
 
-interface AuthContextValue {
-  firebaseUser: User | null;
+interface AuthContextType {
+  user: CurrentUser | null;
   profile: UserProfile | null;
+  firebaseUser: { uid: string; email: string } | null;
   loading: boolean;
-  signInWithGoogle: (role?: UserRole) => Promise<void>;
-  signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string, role?: UserRole) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<{ redirectUrl: string }>;
+  registerStudent: (data: Record<string, unknown>) => Promise<{ message: string }>;
+  registerFaculty: (data: Record<string, unknown>) => Promise<{ message: string }>;
   logout: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   can: (permission: Permission) => boolean;
+  isAdmin: boolean;
+  isDoctor: boolean;
+  isTA: boolean;
+  isFaculty: boolean;
   isStudent: boolean;
-  isStaff: boolean;
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const requestedRoleRef = useRef<UserRole | undefined>(undefined);
+  const router = useRouter();
 
-  const loadProfile = useCallback(async (user: User) => {
-    const email = user.email ?? `${user.uid}@unknown.local`;
-    const requestedRole = requestedRoleRef.current;
-    requestedRoleRef.current = undefined;
+  const refreshUser = useCallback(async () => {
     try {
-      const resolved = await resolveUserProfile(user.uid, email, requestedRole);
-      setProfile(resolved);
-    } catch (error) {
-      console.error(error);
-      setProfile(null);
+      const res = await fetch("/api/auth/me", { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data.user);
+      } else {
+        setUser(null);
+      }
+    } catch {
+      setUser(null);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
-      try {
-        if (user) {
-          setFirebaseUser(user);
-          await loadProfile(user);
-          return;
-        }
-        setFirebaseUser(null);
-        setProfile(null);
-      } finally {
-        setLoading(false);
-      }
+    refreshUser();
+  }, [refreshUser]);
+
+  const login = async (email: string, password: string, rememberMe: boolean = false) => {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, rememberMe }),
     });
 
-    return unsub;
-  }, [loadProfile]);
-
-  const signInWithGoogle = useCallback(async (role?: UserRole) => {
-    requestedRoleRef.current = role;
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: "select_account" });
-    await signInWithPopup(auth, provider);
-  }, []);
-
-  const signInWithEmail = useCallback(async (email: string, password: string) => {
-    const normalized = email.trim().toLowerCase();
-    if (!normalized.includes("@")) {
-      throw new Error("ادخل بريد إلكتروني صحيح.");
-    }
-    if (password.length < 6) {
-      throw new Error("كلمة المرور يجب أن تكون 6 أحرف على الأقل.");
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || "فشل تسجيل الدخول.");
     }
 
-    await signInWithEmailAndPassword(auth, normalized, password);
-  }, []);
+    await refreshUser();
+    return { redirectUrl: data.redirectUrl || "/" };
+  };
 
-  const signUpWithEmail = useCallback(async (
-    email: string,
-    password: string,
-    role: UserRole = "student",
-  ) => {
-    const normalized = email.trim().toLowerCase();
-    if (!normalized.includes("@")) {
-      throw new Error("ادخل بريد إلكتروني صحيح.");
+  const registerStudent = async (formData: Record<string, unknown>) => {
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...formData, role: "STUDENT" }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || "فشل تسجيل الحساب.");
     }
-    if (password.length < 6) {
-      throw new Error("كلمة المرور يجب أن تكون 6 أحرف على الأقل.");
+
+    return { message: data.message };
+  };
+
+  const registerFaculty = async (formData: Record<string, unknown>) => {
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || "فشل تسجيل الحساب.");
     }
 
-    requestedRoleRef.current = role;
-    const result = await createUserWithEmailAndPassword(auth, normalized, password);
-    const user = result.user;
-    const profileDraft = buildPendingProfile(user.uid, normalized, role);
-    await setDoc(doc(db, "users", user.uid), profileDraft);
-    setFirebaseUser(user);
-    setProfile(profileDraft);
-  }, []);
+    return { message: data.message };
+  };
 
-  const logout = useCallback(async () => {
-    setFirebaseUser(null);
-    setProfile(null);
-    await signOut(auth).catch(() => undefined);
-  }, []);
+  const logout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      setUser(null);
+      router.push("/login");
+      router.refresh();
+    } catch (e) {
+      console.error("Logout error:", e);
+    }
+  };
 
-  const refreshProfile = useCallback(async () => {
-    if (firebaseUser) await loadProfile(firebaseUser);
-  }, [firebaseUser, loadProfile]);
+  const profile: UserProfile | null = user
+    ? {
+        uid: user.id,
+        email: user.email,
+        displayName: user.name,
+        role: user.role.toLowerCase() as UserRole,
+        status: (user.status.toLowerCase() === "rejected" ? "suspended" : user.status.toLowerCase()) as UserStatus,
+        studentId: user.studentProfile?.studentId,
+        year: (user.studentProfile?.academicYear?.name || undefined) as StudyLevel | undefined,
+        major: user.department?.name,
+        department: user.department?.name,
+        createdAt: "",
+        updatedAt: "",
+      }
+    : null;
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      firebaseUser,
-      profile,
-      loading,
-      signInWithGoogle,
-      signInWithEmail,
-      signUpWithEmail,
-      logout,
-      refreshProfile,
-      can: (permission) =>
-        profile ? hasPermission(profile.role, permission) : false,
-      isStudent: profile?.role === "student",
-      isStaff: profile
-        ? ["admin", "doctor", "ta"].includes(profile.role)
-        : false,
-    }),
-    [
-      firebaseUser,
-      profile,
-      loading,
-      signInWithGoogle,
-      signInWithEmail,
-      signUpWithEmail,
-      logout,
-      refreshProfile,
-    ],
-  );
+  const value: AuthContextType = {
+    user,
+    profile,
+    firebaseUser: user ? { uid: user.id, email: user.email } : null,
+    loading,
+    login,
+    registerStudent,
+    registerFaculty,
+    logout,
+    refreshUser,
+    can: () => true,
+    isAdmin: user?.role === "ADMIN",
+    isDoctor: user?.role === "DOCTOR",
+    isTA: user?.role === "TA",
+    isFaculty: user?.role === "DOCTOR" || user?.role === "TA",
+    isStudent: user?.role === "STUDENT",
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
 }

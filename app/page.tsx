@@ -1,101 +1,125 @@
-"use client";
+import { prisma } from "@/lib/prisma";
+import { AnnouncementBar } from "@/components/home/AnnouncementBar";
+import { HomeNavbar } from "@/components/home/HomeNavbar";
+import { HomeHero } from "@/components/home/HomeHero";
+import { DeanSection } from "@/components/home/DeanSection";
+import { DepartmentsSection } from "@/components/home/DepartmentsSection";
+import { FeaturesSection } from "@/components/home/FeaturesSection";
+import { FacultySection } from "@/components/home/FacultySection";
+import { EventsSection } from "@/components/home/EventsSection";
+import { NewsSection } from "@/components/home/NewsSection";
+import { CampusLocation } from "@/components/home/CampusLocation";
+import { HomeFooter } from "@/components/home/HomeFooter";
 
-import Link from "next/link";
-import { InstituteMark } from "@/components/brand/InstituteMark";
+export const dynamic = "force-dynamic";
 
-const PROGRAMS = [
-  {
-    title: "علوم الحاسب",
-    body: "برمجة، هياكل بيانات، شبكات، نظم تشغيل، وذكاء اصطناعي — مسار يؤهلك لهندسة البرمجيات وتطوير الأنظمة.",
-  },
-  {
-    title: "نظم المعلومات",
-    body: "قواعد البيانات، تحليل النظم، أمن المعلومات، وإدارة المشاريع — مسار يربط التقنية بإدارة المؤسسة.",
-  },
-];
+export default async function HomePage() {
+  // Fetch real-time data from database
+  const [
+    settings,
+    departments,
+    subjectsCount,
+    posts,
+    doctorsCount,
+    studentsCount,
+    facultyMembers,
+  ] = await Promise.all([
+    prisma.siteSettings.findUnique({ where: { id: "default" } }),
+    prisma.department.findMany({
+      include: {
+        _count: { select: { subjects: true, users: true } },
+      },
+    }),
+    prisma.subject.count(),
+    prisma.post.findMany({
+      take: 3,
+      orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
+      include: {
+        author: { select: { name: true, role: true } },
+        subject: { select: { name: true } },
+        _count: { select: { comments: true, reactions: true } },
+      },
+    }),
+    prisma.user.count({ where: { role: "DOCTOR" } }),
+    prisma.user.count({ where: { role: "STUDENT" } }),
+    prisma.user.findMany({
+      where: { role: { in: ["DOCTOR", "TA"] } },
+      take: 6,
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        department: { select: { name: true } },
+        facultyProfile: { select: { title: true, specialty: true } },
+      },
+    }),
+  ]);
 
-const PILLARS = [
-  { title: "حضور بالـ QR", body: "جلسة محاضرة حقيقية، كود يتجدد، وتسجيل يظهر فورًا في كشف الدكتور." },
-  { title: "حساب بموافقة الإدارة", body: "طالب أو معيد أو دكتور لا يدخل البوابة إلا بعد اعتماد الأدمن." },
-  { title: "أخبار أكاديمية", body: "إعلانات الدكاترة والمعيدين بالنص والصور والملفات داخل فيد منظم." },
-  { title: "ملف شخصي معتمد", body: "الاسم والفرقة والتخصص يُحفظان على الحساب ويظهران في كشوف الغياب." },
-];
+  const instituteName =
+    settings?.instituteName || "المعهد العالي لعلوم الحاسب ونظم المعلومات - مدينة الثقافة والعلوم";
+  const shortName = settings?.shortName || "CSI 6th of October";
+  const heroTitle = settings?.heroTitle || "صناع المستقبل التقني ورواد الابتكار";
+  const heroSubtitle =
+    settings?.heroSubtitle ||
+    "المعهد العالي لعلوم الحاسب ونظم المعلومات بمدينة الثقافة والعلوم بالسادس من أكتوبر — صرح أكاديمي رائد معتمد لإعداد خريجين متميزين في هندسة البرمجيات والذكاء الاصطناعي ونظم المعلومات.";
 
-export default function HomePage() {
+  const facultyList = facultyMembers.map((m) => ({
+    id: m.id,
+    name: m.name,
+    role: m.role,
+    departmentName: m.department?.name,
+    title: m.facultyProfile?.title,
+    specialty: m.facultyProfile?.specialty,
+  }));
+
   return (
-    <div className="relative min-h-screen text-white">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5">
-        <div className="flex items-center gap-3">
-          <InstituteMark className="h-14 w-14" />
-          <div>
-            <p className="text-sm font-extrabold leading-tight">مدينة الثقافة والعلوم</p>
-            <p className="text-[11px] text-white/55">المعهد العالي لعلوم الحاسب ونظم المعلومات</p>
-          </div>
-        </div>
-        <Link
-          href="/login"
-          className="rounded-xl bg-[var(--gold)] px-5 py-2.5 text-sm font-extrabold text-[var(--ink)] shadow-[0_8px_24px_rgba(245,158,11,0.25)]"
-        >
-          دخول البوابة
-        </Link>
-      </header>
+    <div className="relative min-h-screen bg-[#070B16] text-white selection:bg-amber-500 selection:text-slate-950 font-sans">
+      {/* 1. Top Urgent Announcement Bar */}
+      <AnnouncementBar
+        phone={settings?.contactPhone}
+        email={settings?.contactEmail}
+      />
 
-      <main className="mx-auto max-w-6xl px-5 pb-20">
-        <section className="mt-8 overflow-hidden rounded-[32px] border border-white/10 bg-white/5 px-6 py-12 shadow-[0_20px_80px_rgba(0,0,0,0.35)] md:px-12 md:py-16">
-          <p className="font-mono text-[11px] font-bold tracking-[0.25em] text-[var(--gold)]">
-            CSIS PORTAL
-          </p>
-          <h1 className="mt-3 max-w-3xl text-4xl font-black leading-[1.25] md:text-6xl">
-            بوابة حاسبات ومعلومات
-            <span className="block text-[var(--gold)]">تليق بمعهدك، وجاهزة للشغل.</span>
-          </h1>
-          <p className="mt-5 max-w-2xl text-base leading-8 text-white/65 md:text-lg">
-            منصة أكاديمية للمعهد العالي لعلوم الحاسب ونظم المعلومات بمدينة الثقافة والعلوم:
-            حضور، أخبار، ملفات، وصلاحيات حقيقية — مش أرقام ثابتة على الشاشة.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/login"
-              className="rounded-2xl bg-[var(--gold)] px-6 py-3 text-sm font-extrabold text-[var(--ink)]"
-            >
-              ابدأ كطالب أو عضو هيئة تدريس
-            </Link>
-            <a
-              href="https://csi.edu.eg/"
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-2xl border border-white/15 px-6 py-3 text-sm font-bold text-white/80"
-            >
-              موقع مدينة الثقافة والعلوم
-            </a>
-          </div>
-        </section>
+      {/* 2. Responsive Sticky Header with ThemeToggle and Portal CTA */}
+      <HomeNavbar instituteName={instituteName} shortName={shortName} />
 
-        <section className="mt-10 grid gap-4 md:grid-cols-2">
-          {PROGRAMS.map((program) => (
-            <article
-              key={program.title}
-              className="rounded-3xl border border-white/10 bg-[#0F172A]/70 p-7"
-            >
-              <p className="text-xs font-bold text-[var(--gold)]">قسم علمي</p>
-              <h2 className="mt-2 text-2xl font-black">{program.title}</h2>
-              <p className="mt-3 text-sm leading-7 text-white/65">{program.body}</p>
-            </article>
-          ))}
-        </section>
+      {/* 3. Hero Section with Framer Motion & Dynamic Card Tabs */}
+      <HomeHero
+        heroTitle={heroTitle}
+        heroSubtitle={heroSubtitle}
+        shortName={shortName}
+        studentsCount={studentsCount}
+        doctorsCount={doctorsCount}
+        subjectsCount={subjectsCount}
+      />
 
-        <section className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {PILLARS.map((item) => (
-            <article
-              key={item.title}
-              className="rounded-3xl border border-white/10 bg-white/5 p-6"
-            >
-              <h3 className="text-lg font-extrabold">{item.title}</h3>
-              <p className="mt-2 text-sm leading-7 text-white/60">{item.body}</p>
-            </article>
-          ))}
-        </section>
-      </main>
+      {/* 4. Dean's Welcome & Institution Vision / Mission */}
+      <DeanSection />
+
+      {/* 5. Academic Departments & Careers (CS & IS Tracks) */}
+      <DepartmentsSection departments={departments} />
+
+      {/* 6. Smart Digital Ecosystem & Features */}
+      <FeaturesSection />
+
+      {/* 7. Faculty & Leadership Section */}
+      <FacultySection facultyList={facultyList} />
+
+      {/* 8. Campus Events & Hackathons */}
+      <EventsSection />
+
+      {/* 9. Latest News & Announcements */}
+      <NewsSection posts={posts} />
+
+      {/* 10. Campus Location & Interactive Map */}
+      <CampusLocation
+        phone={settings?.contactPhone}
+        email={settings?.contactEmail}
+        address={settings?.address}
+      />
+
+      {/* 11. Footer with Fast Links and City Accreditation */}
+      <HomeFooter instituteName={instituteName} shortName={shortName} />
     </div>
   );
 }

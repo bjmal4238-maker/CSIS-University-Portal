@@ -41,6 +41,7 @@ export function TopNav() {
 
   const visibleItems = NAV_ITEMS.filter((item) => {
     if (!profile) return false;
+    if (pathname.startsWith("/admin") && item.href !== "/admin") return false;
     if (item.roles && !item.roles.includes(profile.role)) return false;
     if (item.permission && !hasPermission(profile.role, item.permission)) return false;
     return true;
